@@ -49,7 +49,8 @@ func initWebServer() *gin.Engine {
 	// 设置session
 	// 步骤1
 	//store := cookie.NewStore([]byte("secret"))
-	store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."), []byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1`"))
+	store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
+		[]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1`"))
 	server.Use(sessions.Sessions("mysession", store))
 	// 步骤3
 	server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
