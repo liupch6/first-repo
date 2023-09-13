@@ -2,11 +2,13 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/service"
@@ -39,7 +41,8 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug := server.Group("/users")
 	{
 		ug.POST("/signup", u.SignUp)
-		ug.POST("/login", u.Login)
+		// ug.POST("/login", u.Login)
+		ug.POST("/login", u.LoginJWT)
 		ug.POST("/edit", u.Edit)
 		ug.GET("/profile", u.Profile)
 	}
@@ -126,11 +129,45 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	sess := sessions.Default(ctx)
 	sess.Set("userId", user.Id)
 	sess.Options(sessions.Options{
-		//Secure: true,
-		//HttpOnly: true,
+		// Secure: true,
+		// HttpOnly: true,
 		MaxAge: 60,
 	})
 	sess.Save()
+
+	ctx.String(http.StatusOK, "登录成功")
+}
+
+func (u *UserHandler) LoginJWT(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	user, err := u.svc.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidUserOrPassword) {
+			ctx.String(http.StatusOK, "账户或密码错误")
+			return
+		}
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	token := jwt.New(jwt.SigningMethodHS512)
+	tokenStr, err := token.SignedString([]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1"))
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "系统错误")
+		return
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+	fmt.Println(tokenStr)
+	fmt.Println(user)
 
 	ctx.String(http.StatusOK, "登录成功")
 }

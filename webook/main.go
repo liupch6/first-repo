@@ -31,8 +31,8 @@ func initWebServer() *gin.Engine {
 
 	// 解决跨域问题（CORS）
 	server.Use(cors.New(cors.Config{
-		//AllowOrigins:     []string{"https://localhost:3000"},
-		//AllowMethods:     []string{"POST", "GET"},
+		// AllowOrigins:     []string{"https://localhost:3000"},
+		// AllowMethods:     []string{"POST", "GET"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"x-jwt-token"},
 		AllowCredentials: true,
@@ -48,9 +48,9 @@ func initWebServer() *gin.Engine {
 
 	// 设置session
 	// 步骤1
-	//store := cookie.NewStore([]byte("secret"))
+	// store := cookie.NewStore([]byte("secret"))
 	// 单实例部署 memstore 基于内存的实现
-	//store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
+	// store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
 	//	[]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1`"))
 	// 多实例部署 redis 基于redis的实现
 	store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
@@ -61,7 +61,8 @@ func initWebServer() *gin.Engine {
 	}
 	server.Use(sessions.Sessions("mysession", store))
 	// 步骤3
-	server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
+	// server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
 	return server
 }
 
