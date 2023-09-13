@@ -125,6 +125,11 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	// 步骤2
 	sess := sessions.Default(ctx)
 	sess.Set("userId", user.Id)
+	sess.Options(sessions.Options{
+		//Secure: true,
+		//HttpOnly: true,
+		MaxAge: 60,
+	})
 	sess.Save()
 
 	ctx.String(http.StatusOK, "登录成功")
