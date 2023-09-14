@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -44,7 +45,8 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 		// ug.POST("/login", u.Login)
 		ug.POST("/login", u.LoginJWT)
 		ug.POST("/edit", u.Edit)
-		ug.GET("/profile", u.Profile)
+		// ug.GET("/profile", u.Profile)
+		ug.GET("/profile", u.ProfileJWT)
 	}
 }
 
@@ -138,6 +140,12 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "登录成功")
 }
 
+type UserClaims struct {
+	jwt.RegisteredClaims
+	// 声明要放进 token 中的数据
+	Uid int64
+}
+
 func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
@@ -159,7 +167,12 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	token := jwt.New(jwt.SigningMethodHS512)
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+		Uid:              user.Id,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	// token := jwt.New(jwt.SigningMethodHS512)
 	tokenStr, err := token.SignedString([]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1"))
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "系统错误")
@@ -179,4 +192,21 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 func (u *UserHandler) Profile(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "这是你的响应")
 	return
+}
+
+func (u *UserHandler) ProfileJWT(ctx *gin.Context) {
+	// 不 ok 的话 c == nil, 下面类型断言会报错
+	// c, ok := ctx.Get("claims")
+	// if !ok {
+	// 	ctx.String(http.StatusOK, "系统错误")
+	// 	return
+	// }
+
+	c, _ := ctx.Get("claims")
+	claims, ok := c.(*UserClaims)
+	if !ok {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	fmt.Println(claims.Uid)
 }

@@ -1,11 +1,15 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
+	"geektime/webook/internal/web"
 )
 
 type LoginJWTMiddlewareBuilder struct {
@@ -41,16 +45,30 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 		tokenStr := segs[1]
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		claims := &web.UserClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1"), nil
 		})
+		// token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		// 	return []byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1"), nil
+		// })
 		if err != nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if token == nil || !token.Valid {
+		if token == nil || !token.Valid || claims.Uid == 0 {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		now := time.Now()
+		if claims.ExpiresAt.Sub(now) < time.Second*50 {
+			claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
+			tokenStr, err = token.SignedString([]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1"))
+			if err != nil {
+				log.Println("jwt续约失败", err)
+			}
+			ctx.Header("x-jwt-token", tokenStr)
+		}
+		ctx.Set("claims", claims)
 	}
 }
