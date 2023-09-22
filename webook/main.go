@@ -13,6 +13,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	"geektime/webook/config"
 	"geektime/webook/internal/repository"
 	"geektime/webook/internal/repository/dao"
 	"geektime/webook/internal/service"
@@ -22,11 +23,11 @@ import (
 )
 
 func main() {
-	// server := initWebServer()
-	// db := initDB()
-	// u := initUser(db)
-	// u.RegisterRoutes(server)
-	server := gin.Default()
+	server := initWebServer()
+	db := initDB()
+	u := initUser(db)
+	u.RegisterRoutes(server)
+
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello, world")
 	})
@@ -37,7 +38,7 @@ func initWebServer() *gin.Engine {
 	server := gin.Default()
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: config.Config.Redis.Addr,
 	})
 	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 10).Build())
 
@@ -87,7 +88,7 @@ func initUser(db *gorm.DB) *web.UserHandler {
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"))
+	db, err := gorm.Open(mysql.Open(config.Config.DB.DSN))
 	if err != nil {
 		panic(err)
 	}

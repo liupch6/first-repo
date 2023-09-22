@@ -6,5 +6,5 @@ docker:
 	# 运行一下 go mod tidy，防止 go.sum 文件不对，编译失败
 	@go mod tidy
 	# 指定编译在 ARM 架构的 linux 操作系统上的
-	@GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -o webook .
+	@GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -tags=k8s -o webook .
 	@docker build -t liupch/webook:v0.0.1 .
