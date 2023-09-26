@@ -6,10 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -19,7 +16,6 @@ import (
 	"geektime/webook/internal/service"
 	"geektime/webook/internal/web"
 	"geektime/webook/internal/web/middleware"
-	"geektime/webook/pkg/ginx/middlewares/ratelimit"
 )
 
 func main() {
@@ -37,10 +33,10 @@ func main() {
 func initWebServer() *gin.Engine {
 	server := gin.Default()
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: config.Config.Redis.Addr,
-	})
-	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 10).Build())
+	// redisClient := redis.NewClient(&redis.Options{
+	// 	Addr: config.Config.Redis.Addr,
+	// })
+	// server.Use(ratelimit.NewBuilder(redisClient, time.Second, 10).Build())
 
 	// 解决跨域问题（CORS）
 	server.Use(cors.New(cors.Config{
@@ -63,8 +59,8 @@ func initWebServer() *gin.Engine {
 	// 步骤1
 	// store := cookie.NewStore([]byte("secret"))
 	// 单实例部署 memstore 基于内存的实现
-	store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
-		[]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1`"))
+	// store := memstore.NewStore([]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
+	// 	[]byte("aY3?fW6+kK9~mX7!yQ5|wS7%vR8_lO1`"))
 	// 多实例部署 redis 基于redis的实现
 	// store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
 	// 	[]byte("mQ5>dY9%bZ4,uI6,oF4~aU4(nU0&sK5."),
@@ -72,7 +68,7 @@ func initWebServer() *gin.Engine {
 	// if err != nil {
 	// 	panic(err)
 	// }
-	server.Use(sessions.Sessions("mysession", store))
+	// server.Use(sessions.Sessions("mysession", store))
 	// 步骤3
 	// server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
