@@ -16,6 +16,7 @@ import (
 	"geektime/webook/internal/repository/cache"
 	"geektime/webook/internal/repository/dao"
 	"geektime/webook/internal/service"
+	"geektime/webook/internal/service/sms/memory"
 	"geektime/webook/internal/web"
 	"geektime/webook/internal/web/middleware"
 )
@@ -74,7 +75,8 @@ func initWebServer() *gin.Engine {
 	// server.Use(sessions.Sessions("mysession", store))
 	// 步骤3
 	// server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
-	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup", "/users/login").Build())
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup",
+		"/users/login", "/users/login_sms/code/send", "/users/login_sms").Build())
 	return server
 }
 
@@ -83,7 +85,12 @@ func initUser(db *gorm.DB, cmd redis.Cmdable) *web.UserHandler {
 	uc := cache.NewUserCache(cmd)
 	repo := repository.NewUserRepository(ud, uc)
 	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+
+	codeCache := cache.NewCodeCache(cmd)
+	codeRepo := repository.NewCodeRepository(codeCache)
+	smsSvc := memory.NewService()
+	codeSvc := service.NewCodeService(codeRepo, smsSvc)
+	u := web.NewUserHandler(svc, codeSvc)
 	return u
 }
 

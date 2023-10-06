@@ -21,11 +21,12 @@ var (
 
 type UserHandler struct {
 	svc            *service.UserService
+	codeSvc        *service.CodeService
 	emailRegexp    *regexp.Regexp
 	passwordRegexp *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 		// 和上面比起来，用 ` 看起来就比较清爽
@@ -33,6 +34,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	)
 	return &UserHandler{
 		svc:            svc,
+		codeSvc:        codeSvc,
 		emailRegexp:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRegexp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 	}
@@ -47,7 +49,36 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 		ug.POST("/edit", u.Edit)
 		// ug.GET("/profile", u.Profile)
 		ug.GET("/profile", u.ProfileJWT)
+
+		ug.POST("/login_sms/code/send", u.SendLoginSMSCode)
+		ug.POST("/login_sms", u.LoginSMS)
 	}
+}
+
+func (u *UserHandler) LoginSMS(ctx *gin.Context) {
+
+}
+
+func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	const biz = "login"
+	err := u.codeSvc.Send(ctx, biz, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "发送成功",
+	})
 }
 
 func (u *UserHandler) SignUp(ctx *gin.Context) {
