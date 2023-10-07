@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 )
 
 var (
-	ErrUserEmailDuplicate = errors.New("邮箱重复")
-	ErrUserNotFound       = gorm.ErrRecordNotFound
+	ErrUserDuplicate = errors.New("邮箱重复")
+	ErrUserNotFound  = gorm.ErrRecordNotFound
 )
 
 type UserDao struct {
@@ -19,9 +20,12 @@ type UserDao struct {
 }
 
 type User struct {
-	Id       int64  `gorm:"primaryKey,autoIncrement"`
-	Email    string `gorm:"unique"`
+	Id       int64          `gorm:"primaryKey,autoIncrement"`
+	Email    sql.NullString `gorm:"unique"`
 	Password string
+
+	// 唯一索引允许有多个空值，但是不能有多个 ""
+	Phone sql.NullString `gorm:"unique"`
 
 	// 创建和更新时间：毫秒数
 	Ctime int64
@@ -43,7 +47,8 @@ func (ud *UserDao) Insert(ctx context.Context, u User) error {
 	if errors.As(err, &mysqlErr) {
 		const uniqueIndexErrNo uint16 = 1062
 		if mysqlErr.Number == uniqueIndexErrNo {
-			return ErrUserEmailDuplicate
+			// 邮箱冲突或者手机号码冲突
+			return ErrUserDuplicate
 		}
 	}
 	return err
@@ -53,6 +58,12 @@ func (ud *UserDao) FindByEmail(ctx context.Context, email string) (User, error) 
 	var u User
 	err := ud.db.WithContext(ctx).First(&u, "email = ?", email).Error
 	// err := ud.db.WithContext(ctx).Where("email = ?", email).First(&u).Error
+	return u, err
+}
+
+func (ud *UserDao) FindByPhone(ctx context.Context, phone string) (User, error) {
+	var u User
+	err := ud.db.WithContext(ctx).First(&u, "phone = ?", phone).Error
 	return u, err
 }
 

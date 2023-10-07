@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrUserEmailDuplicate    = repository.ErrUserEmailDuplicate
+	ErrUserDuplicate         = repository.ErrUserDuplicate
 	ErrInvalidUserOrPassword = errors.New("账户或密码错误")
 )
 
@@ -52,6 +52,34 @@ func (svc *UserService) Login(ctx context.Context, email, password string) (doma
 	return u, nil
 }
 
+func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+
+	// 快路径
+	u, err := svc.repo.FindByPhone(ctx, phone)
+	// 判断有没有这个用户
+	if !errors.Is(err, repository.ErrUserNotFound) {
+		return u, err
+	}
+
+	// 慢路径
+	// 没有这个用户 => 创建用户
+	err = svc.repo.Create(ctx, domain.User{
+		Phone: phone,
+	})
+	if err != nil && !errors.Is(err, ErrUserDuplicate) {
+		return domain.User{}, err
+	}
+	return svc.repo.FindByPhone(ctx, phone)
+}
+
 func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
 	return svc.repo.FindById(ctx, id)
+}
+
+func PathsDownGrage(ctx context.Context, quick, slow func()) {
+	quick()
+	if ctx.Value("降级") == "true" {
+		return
+	}
+	slow()
 }
