@@ -17,9 +17,7 @@ import (
 
 const biz = "login"
 
-var (
-	ErrUserEmailDuplicate = service.ErrUserDuplicate
-)
+var _ handler = &UserHandler{}
 
 type UserHandler struct {
 	svc            *service.UserService
@@ -178,7 +176,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		if errors.Is(err, ErrUserEmailDuplicate) {
+		if errors.Is(err, service.ErrUserDuplicate) {
 			ctx.String(http.StatusOK, "邮箱重复")
 			return
 		} else {
