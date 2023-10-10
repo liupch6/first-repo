@@ -13,7 +13,6 @@ import (
 	"geektime/webook/internal/service"
 	"geektime/webook/internal/web"
 	"geektime/webook/ioc"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,15 +22,15 @@ func InitWebServer() *gin.Engine {
 	cmdable := ioc.InitRedis()
 	v := ioc.InitMiddlewares(cmdable)
 	db := ioc.InitDB()
-	userDao := dao.NewUserDao(db)
+	userDAO := dao.NewUserDAO(db)
 	userCache := cache.NewUserCache(cmdable)
-	userRepository := repository.NewUserRepository(userDao, userCache)
+	userRepository := repository.NewUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
 	codeCache := cache.NewCodeCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := ioc.InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService)
-	engine := ioc.InitGin(v, userHandler)
+	engine := ioc.InitWebServer(v, userHandler)
 	return engine
 }

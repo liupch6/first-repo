@@ -23,17 +23,30 @@ var luaSetCode string
 //go:embed lua/verify_code.lua
 var luaVerifyCode string
 
-type CodeCache struct {
+type CodeCache interface {
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+}
+
+type RedisCodeCache struct {
 	client redis.Cmdable
 }
 
-func NewCodeCache(client redis.Cmdable) *CodeCache {
-	return &CodeCache{
+// NewCodeCacheGoBestPractice go 的最佳实践是返回具体类型
+func NewCodeCacheGoBestPractice(client redis.Cmdable) *RedisCodeCache {
+	return &RedisCodeCache{
 		client: client,
 	}
 }
 
-func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
+// NewCodeCache 在使用 wire 的时候，注意你的初始化方法 NewXXX 最好返回接口
+func NewCodeCache(client redis.Cmdable) CodeCache {
+	return &RedisCodeCache{
+		client: client,
+	}
+}
+
+func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	// 把 lua 脚本放到 redis 里面执行
 	res, err := c.client.Eval(ctx, luaSetCode, []string{c.key(biz, phone)}, code).Int()
 	if err != nil {
@@ -49,7 +62,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	}
 }
 
-func (c *CodeCache) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
+func (c *RedisCodeCache) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
 	res, err := c.client.Eval(ctx, luaVerifyCode, []string{c.key(biz, phone)}, inputCode).Int()
 	if err != nil {
 		return false, err
@@ -66,6 +79,6 @@ func (c *CodeCache) Verify(ctx context.Context, biz, phone, inputCode string) (b
 	}
 }
 
-func (c *CodeCache) key(biz, phone string) string {
+func (c *RedisCodeCache) key(biz, phone string) string {
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }

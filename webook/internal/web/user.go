@@ -15,18 +15,25 @@ import (
 	"geektime/webook/internal/service"
 )
 
-const biz = "login"
+const (
+	biz       = "login"
+	userIdKey = "userId"
+)
 
+// 确保 UserHandler 实现了 handler 接口
 var _ handler = &UserHandler{}
 
+// 这个更优雅
+var _ handler = (*UserHandler)(nil)
+
 type UserHandler struct {
-	svc            *service.UserService
-	codeSvc        *service.CodeService
+	svc            service.UserService
+	codeSvc        service.CodeService
 	emailRegexp    *regexp.Regexp
 	passwordRegexp *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 		// 和上面比起来，用 ` 看起来就比较清爽
@@ -280,28 +287,79 @@ func (u *UserHandler) setJWTToken(ctx *gin.Context, uid int64) error {
 }
 
 func (u *UserHandler) Edit(ctx *gin.Context) {
-
-}
-
-func (u *UserHandler) Profile(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "这是你的响应")
-	return
+	type Req struct {
+		Nickname string `json:"nickname"`
+		Birthday string `json:"birthday"`
+		AboutMe  string `json:"aboutMe"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	if req.Nickname == "" {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "昵称不能为空"})
+		return
+	}
+	if len(req.AboutMe) > 1024 {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "关于我过长"})
+		return
+	}
+	birthday, err := time.Parse(time.DateOnly, req.Birthday)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "日期格式不对"})
+		return
+	}
+	uc := ctx.MustGet("user").(UserClaims)
+	err = u.svc.UpdateNonSensitiveInfo(ctx, domain.User{
+		Id:       uc.Uid,
+		Nickname: req.Nickname,
+		AboutMe:  req.AboutMe,
+		Birthday: birthday,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{Msg: "OK"})
 }
 
 func (u *UserHandler) ProfileJWT(ctx *gin.Context) {
-	// 不 ok 的话 c == nil, 下面类型断言会报错
-	// c, ok := ctx.Get("claims")
-	// if !ok {
-	// 	ctx.String(http.StatusOK, "系统错误")
-	// 	return
-	// }
-
-	c, _ := ctx.Get("claims")
-	claims, ok := c.(*UserClaims)
-	if !ok {
+	type Profile struct {
+		Email    string
+		Phone    string
+		Nickname string
+		Birthday string
+		AboutMe  string
+	}
+	uc := ctx.MustGet("user").(UserClaims)
+	user, err := u.svc.Profile(ctx, uc.Uid)
+	if err != nil {
+		// 按照道理来说，这边 id 对应的数据肯定存在，所以要是没找到，
+		// 那就说明是系统出了问题。
 		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
-	fmt.Println(claims.Uid)
-	ctx.String(http.StatusOK, "your profile")
+	ctx.JSON(http.StatusOK, Profile{
+		Email:    user.Email,
+		Phone:    user.Phone,
+		Nickname: user.Nickname,
+		Birthday: user.Birthday.Format(time.DateOnly),
+		AboutMe:  user.AboutMe,
+	})
+}
+
+func (u *UserHandler) Profile(ctx *gin.Context) {
+	type Profiles struct {
+		Email string `json:"email"`
+	}
+	sess := sessions.Default(ctx)
+	id := sess.Get(userIdKey).(int64)
+	user, err := u.svc.Profile(ctx, id)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	ctx.JSON(http.StatusOK, Profiles{
+		Email: user.Email,
+	})
 }
