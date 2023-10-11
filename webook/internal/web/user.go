@@ -149,24 +149,28 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	}
 	var req SignUpReq
 	if err := ctx.Bind(&req); err != nil {
-		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
 
 	// 验证邮箱格式
-	if ok, err := u.emailRegexp.MatchString(req.Email); err != nil {
+	ok, err := u.emailRegexp.MatchString(req.Email)
+	// 超时
+	if err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
-	} else if !ok {
+	}
+	if !ok {
 		ctx.String(http.StatusOK, "邮箱格式错误")
 		return
 	}
 
 	// 验证密码格式
-	if ok, err := u.passwordRegexp.MatchString(req.Password); err != nil {
+	ok, err = u.passwordRegexp.MatchString(req.Password)
+	if err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
-	} else if !ok {
+	}
+	if !ok {
 		ctx.String(http.StatusOK, "密码至少8个字符，至少1个字母，1个数字和1个特殊字符")
 		return
 	}
@@ -178,20 +182,18 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	}
 
 	// 数据库操作
-	err := u.svc.SignUp(ctx, domain.User{
+	err = u.svc.SignUp(ctx, domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	if err != nil {
-		if errors.Is(err, service.ErrUserDuplicate) {
-			ctx.String(http.StatusOK, "邮箱重复")
-			return
-		} else {
-			ctx.String(http.StatusOK, "系统错误")
-			return
-		}
+	if errors.Is(err, service.ErrUserDuplicate) {
+		ctx.String(http.StatusOK, "邮箱重复")
+		return
 	}
-
+	if err != nil {
+		ctx.String(http.StatusOK, "系统异常")
+		return
+	}
 	// 注册成功
 	ctx.String(http.StatusOK, "注册成功")
 }
