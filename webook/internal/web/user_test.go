@@ -31,9 +31,11 @@ func TestEncrypt(t *testing.T) {
 
 func TestUserHandler_SignUp(t *testing.T) {
 	testCases := []struct {
-		name         string
-		mock         func(ctrl *gomock.Controller) service.UserService
-		reqBody      string
+		name string
+		mock func(ctrl *gomock.Controller) service.UserService
+
+		reqBody string
+
 		expectedCode int
 		expectedBody string
 	}{
@@ -48,13 +50,14 @@ func TestUserHandler_SignUp(t *testing.T) {
 			expectedCode: http.StatusOK,
 			expectedBody: "注册成功",
 		},
+		// TODO
 		{
 			name: "参数不对， bind 失败",
 			mock: func(ctrl *gomock.Controller) service.UserService {
 				userSvc := svcmocks.NewMockUserService(ctrl)
 				return userSvc
 			},
-			reqBody:      `{"email": "123@qq.com","password": "hello#world123"}`,
+			reqBody:      `{"email": "123@qq.com","password": "hello#world123",}`,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: "",
 		},

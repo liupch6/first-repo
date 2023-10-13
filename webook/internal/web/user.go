@@ -121,6 +121,7 @@ func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
 			Code: 4,
 			Msg:  "输入错误",
 		})
+		return
 	}
 	err := u.codeSvc.Send(ctx, biz, req.Phone)
 	switch err {
@@ -138,7 +139,6 @@ func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
 			Msg:  "系统错误",
 		})
 	}
-
 }
 
 func (u *UserHandler) SignUp(ctx *gin.Context) {
@@ -210,11 +210,12 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 
 	user, err := u.svc.Login(ctx, req.Email, req.Password)
+
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		ctx.String(http.StatusOK, "账户或密码错误")
+		return
+	}
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidUserOrPassword) {
-			ctx.String(http.StatusOK, "账户或密码错误")
-			return
-		}
 		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
